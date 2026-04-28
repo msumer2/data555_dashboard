@@ -1,0 +1,12 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Confidential data — never push
+code/*.csv
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,472 @@
+---
+title: "CARE DREAMS - Malawi"
+author: "Mia Sumera"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: spacelab
+    orientation: rows
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(here)
+library(tidyverse)
+library(DT)
+library(highcharter)
+library(knitr)
+
+here::i_am("DREAMS_Dashboard.Rmd")
+
+samples      <- readRDS(here("output/samples.rds"))
+regressions  <- readRDS(here("output/regressions.rds"))
+sum_data     <- readRDS(here("output/summary_data.rds"))
+figs         <- readRDS(here("output/figures.rds"))
+reg_table    <- readRDS(here("output/reg_table.rds"))
+care_map     <- readRDS(here("output/care_map.rds"))
+assist_table <- readRDS(here("output/assist_table.rds"))
+
+fmt_p <- regressions$fmt_p
+
+make_rcdf <- function(score_vec, group_label, max_score = 8) {
+  counts <- table(factor(floor(score_vec), levels = 0:max_score))
+  total  <- sum(counts)
+  tibble(
+    score = 0:max_score,
+    pct   = map_dbl(0:max_score,
+                    ~ sum(counts[(.x + 1):length(counts)]) / total * 100),
+    group = group_label
+  )
+}
+```
+
+Overview 
+=====================================
+
+Column {.sidebar}
+-------------------------------------
+
+**Diversifying Resilience Approaches through Market Systems in Emergency (DREAMS)**
+
+**Introduction**
+
+The 2023/2024 El Niño event produced severe food and nutrition insecurity across southern Malawi. In response, the DREAMS program was implemented across Chiradzulu, Phalombe, and Thyolo through four sectors:
+
+- Food Assistance
+- Agriculture Support
+- Nutrition Services
+- Protection Programming
+
+**Research Question**
+
+How does the integrated delivery of unconditional food assistance (UFA) and supplemental nutrition assistance (SNA) top-ups influence nutritional status for children under two and women, compared to households receiving UFA alone?
+
+**Study Population** 
+
+The analytic sample includes Women of Reproductive Age (WRA, 15-49) and households with children under two (6–23months) within DREAMS beneficiary households. 
+
+---
+
+**Note:** *Households that received Unconditional Food Assistance also received Unconditional Cash Transfer.* 
+
+Row {data-height=180}
+-------------------------------------
+### Assistance Coverage
+```{r table}
+assist_table
+```
+
+Row
+-------------------------------------
+### Program Districts — Malawi
+```{r map}
+care_map
+```
+
+### Assistance Distribution
+```{r assist-bar}
+figs$assist_bar
+```
+
+
+Food Consumption Score
+=====================================
+
+Column {.sidebar}
+-------------------------------------
+
+**Food Consumption Score (FCS)** measures the dietary quality and diversity of a household based on how often they consumed different food groups in the past 7 days.
+
+**Program Arms:**
+
+- **UFA Only** — Unconditional Food Assistance alone
+- **UFA + SNA** — Food Assistance plus Nutrition top-up
+
+**UN World Food Programme (WFP) Thresholds:**
+
+- **Acceptable:** FCS ≥ 35
+- **Borderline:** FCS 21.5–35
+- **Poor:** FCS < 21
+
+**Model:** Adjusted linear regression. β = mean difference in FCS for UFA+SNA vs UFA only, holding all covariates constant.
+
+**Covariates:** Age, marital status, education, household status, household size, sex of HH head, district.
+
+---
+
+**Key Result:**
+
+```{r fcs-key}
+beta_val <- round(regressions$fcs_int$estimate, 2)
+htmltools::p(
+  style = "font-size:13px;",
+  htmltools::strong("\u03b2 = "), beta_val,
+  htmltools::br(),
+  htmltools::strong("95% CI: "),
+  paste0("[", round(regressions$fcs_int$ci_lower, 2), ", ",
+         round(regressions$fcs_int$ci_upper, 2), "]"),
+  htmltools::br(),
+  htmltools::strong("p = "), fmt_p(regressions$fcs_int$p.value)
+)
+```
+
+
+Row
+-------------------------------------
+
+### FCS Category Distribution by Program Arm
+```{r fcs-cat}
+figs$fcs_cat
+```
+
+Row {data-height=210}
+-------------------------------------
+
+### Crude & Adjusted Effect Estimates {data-width=500}
+```{r reg-table-fcs}
+reg_table$reg_table_fcs
+```
+
+
+### Key Takeaway {data-width=500}
+```{r fcs-takeaway}
+htmltools::div(
+  style = "padding: 8px 12px; font-family: Arial; font-size: 13px; line-height: 1.7;",
+  htmltools::p(
+    htmltools::strong("UFA+SNA functioned as a protective factor"),
+    " against seasonal food insecurity: while UFA-only households saw FCS decline at endline
+    (e.g. Thyolo: 35.3 \u2192 26.3), UFA+SNA maintained near-baseline levels (35.1), ",
+    htmltools::strong("scored significantly higher"),
+    " after adjustment (",
+    htmltools::strong(paste0("\u03b2 = ", round(regressions$fcs_int$estimate, 2),
+                             ", p = ", fmt_p(regressions$fcs_int$p.value))),
+    "), and had less than half the proportion of food-insecure households (10.7% vs 26.7% Poor)."
+  ),
+  htmltools::p(
+    "Integrated assistance yielded the lowest percentage of households in the Poor category
+    (FCS < 21) and the highest in both Borderline and Acceptable categories, suggesting
+    the nutrition top-up provides ",
+    htmltools::strong("greater protection"),
+    " against food insecurity beyond food assistance alone."
+  )
+)
+```
+
+
+Minimum Diet Diversity - Women
+=====================================
+
+Column {.sidebar}
+-------------------------------------
+
+**Minimum Dietary Diversity — Women (MDD-W)** measures whether women aged 15–49 consumed food from ≥5 of 8 food groups in the past 24 hours.
+
+**MDD threshold:**
+
+≥ 5 food groups = MDD **met**
+
+< 5 food groups = MDD **not met**
+
+
+**Model:** Adjusted logistic regression. Sex of household head excluded (female-only subgroup).
+
+**Covariates:** Age, marital status, education, household status, household size, district.
+
+---
+
+**Key Result:**
+
+```{r mddw-key}
+htmltools::p(
+  style = "font-size:13px;",
+  htmltools::strong("OR = "), round(regressions$mddw_int$OR, 2),
+  htmltools::br(),
+  htmltools::strong("95% CI: "),
+  paste0("[", round(regressions$mddw_int$ci_lower, 2), ", ",
+         round(regressions$mddw_int$ci_upper, 2), "]"),
+  htmltools::br(),
+  htmltools::strong("p = "), fmt_p(regressions$mddw_int$p.value)
+)
+```
+
+Row
+-------------------------------------
+
+### Women (15–49 years) — Reverse Cumulative Distribution
+```{r cdf-mddw}
+cdf_cols <- c("Baseline" = "#aaaaaa55", "Unconditional Food Assistance (UFA only)" = "#5F5E5A80", "Unconditional Food Assistance + Nutrition Top-up (UFA+SNA)" = "#C45E0A")
+
+cdf_w <- bind_rows(
+  make_rcdf(samples$mddw_bl$mdd_w_score,  "Baseline"),
+  make_rcdf(samples$mddw_ufa$mdd_w_score, "Unconditional Food Assistance (UFA only)"),
+  make_rcdf(samples$mddw_sna$mdd_w_score, "Unconditional Food Assistance + Nutrition Top-up (UFA+SNA)")
+) %>%
+  mutate(group = factor(group, levels = c("Baseline", 
+                                          "Unconditional Food Assistance (UFA only)", 
+                                          "Unconditional Food Assistance + Nutrition Top-up (UFA+SNA)")),
+         pct = round(pct, 1))
+
+hchart(cdf_w, "line", hcaes(x = score, y = pct, group = group)) %>%
+  hc_colors(unname(cdf_cols)) %>%
+  hc_title(text = "MDD-W: Minimum Dietary Diversity \u2014 Women (15\u201349)") %>%
+  hc_subtitle(text = "Adjusted OR = 1.12 (p = 0.75) \u2014 not significant") %>%
+  hc_xAxis(title = list(text = "Number of Food Groups Consumed (\u22655)"),
+           min = 0, max = 8, tickInterval = 1,
+           plotLines = list(list(value = 5, color = "#333333", dashStyle = "Dash", width = 2,
+                                 label = list(text = "MDD threshold (\u22655)",
+                                              style = list(color = "#333333", fontSize = "11px"))))) %>%
+  hc_yAxis(title = list(text = "% of Women"), min = 0, max = 100,
+           labels = list(format = "{value}%")) %>%
+  hc_tooltip(useHTML = TRUE, headerFormat = "",
+             pointFormat = "<b>Group:</b> {series.name}<br><b>Food groups \u2265:</b> {point.x}<br><b>Percentage:</b> {point.y:.1f}%") %>%
+  hc_credits(enabled = TRUE,
+             text = paste0("Baseline n=", nrow(samples$mddw_bl),
+                           " | UFA only n=", nrow(samples$mddw_ufa),
+                           " | UFA+SNA n=", nrow(samples$mddw_sna),
+                           ". Sample: Households including WRA."),
+             style = list(fontSize = "10px")) %>%
+  hc_legend(enabled = TRUE, layout = "horizontal", align = "left", verticalAlign = "top") %>%
+  hc_add_theme(hc_theme_google())
+```
+
+Row {data-height=160}
+-------------------------------------
+
+### Crude & Adjusted Effect Estimates {data-width=550}
+```{r reg-table-w}
+reg_table$reg_table_mddw
+```
+
+
+### Key Takeaway {data-width=450}
+
+```{r mddw-takeaway}
+htmltools::div(
+  style = "padding: 8px 12px; font-family: Arial; font-size: 13px; line-height: 1.7;",
+  htmltools::p(
+    htmltools::strong("MDD-W trended positive"),
+    " at endline for UFA+SNA vs UFA only (53.1% vs 45.5%) but did not
+    reach statistical significance (OR = ",
+    round(regressions$mddw_int$OR, 2), ", p = ",
+    fmt_p(regressions$mddw_int$p.value),
+    "), likely reflecting ",
+    htmltools::strong("limited statistical power"),
+    " (n = ", nrow(samples$mddw_sna),
+    " in the UFA+SNA group)", htmltools::strong("rather than absence of effect.")
+  ),
+  htmltools::p(
+    "Notably, only ",
+    htmltools::strong("26.9% of mothers with infants aged 0\u20135 months met MDD-W at baseline"),
+    ", a separate but related subgroup, reflecting high unmet nutritional need among the most
+    vulnerable women, and underscoring that ",
+    htmltools::strong(" food assistance alone is insufficient"),
+    " to meet dietary diversity needs."
+  )
+)
+```
+
+
+Minimum Diet Diversity - Children
+=====================================
+
+Column {.sidebar}
+-------------------------------------
+
+**Minimum Dietary Diversity — Children (MDD-C)** measures whether children aged 6–23 months consumed food from ≥5 of 8 food groups in the past 24 hours.
+
+**MDD threshold:**
+
+≥ 5 food groups = MDD **met**
+
+< 5 food groups = MDD **not met**
+
+
+**Model:** Firth penalized logistic regression used due to small sample size and sparse cells in the UFA+SNA subgroup.
+
+**Covariates:** Age, marital status, education, household status, household size, sex of household head, district.
+
+---
+
+**Key Result:**
+
+```{r mddc-key}
+htmltools::p(
+  style = "font-size:13px;",
+  htmltools::strong("OR = "), round(regressions$mddc_int$OR, 2),
+  htmltools::br(),
+  htmltools::strong("95% CI: "),
+  paste0("[", round(regressions$mddc_int$ci_lower, 2), ", ",
+         round(regressions$mddc_int$ci_upper, 2), "]"),
+  htmltools::br(),
+  htmltools::strong("p = "), fmt_p(regressions$mddc_int$p.value)
+)
+```
+
+Row
+-------------------------------------
+
+### Children (6–23 months) — Reverse Cumulative Distribution
+```{r cdf-mddc}
+cdf_c <- bind_rows(
+  make_rcdf(samples$mddc_bl$mdd_c_score,  "Baseline"),
+  make_rcdf(samples$mddc_ufa$mdd_c_score, "Unconditional Food Assistance (UFA only)"),
+  make_rcdf(samples$mddc_sna$mdd_c_score, "Unconditional Food Assistance + Nutrition Top-up (UFA+SNA)")
+) %>%
+  mutate(group = factor(group, levels = c("Baseline", 
+                                          "Unconditional Food Assistance (UFA only)", 
+                                          "Unconditional Food Assistance + Nutrition Top-up (UFA+SNA)")),
+         pct = round(pct, 1))
+
+hchart(cdf_c, "line", hcaes(x = score, y = pct, group = group)) %>%
+  hc_colors(unname(cdf_cols)) %>%
+  hc_title(text = "MDD-C: Minimum Dietary Diversity \u2014 Children (6\u201323m)") %>%
+  hc_subtitle(text = "Firth adjusted OR = 1.29 (p = 0.52) \u2014 not significant") %>%
+  hc_xAxis(title = list(text = "Number of Food Groups Consumed (\u2265)"),
+           min = 0, max = 8, tickInterval = 1,
+           plotLines = list(list(value = 5, color = "#333333", dashStyle = "Dash", width = 2,
+                                 label = list(text = "MDD threshold (\u22655)",
+                                              style = list(color = "#333333", fontSize = "11px"))))) %>%
+  hc_yAxis(title = list(text = "% of Children"), min = 0, max = 100,
+           labels = list(format = "{value}%")) %>%
+  hc_tooltip(useHTML = TRUE, headerFormat = "",
+             pointFormat = "<b>Group:</b> {series.name}<br><b>Food groups \u2265:</b> {point.x}<br><b>Percentage:</b> {point.y:.1f}%") %>%
+  hc_credits(enabled = TRUE,
+             text = paste0("Baseline n=", nrow(samples$mddc_bl),
+                           " | UFA only n=", nrow(samples$mddc_ufa),
+                           " | UFA+SNA n=", nrow(samples$mddc_sna),
+                           ". Sample: Households including children (6\u201323m)."),
+             style = list(fontSize = "10px")) %>%
+  hc_legend(enabled = TRUE, layout = "horizontal", align = "left", verticalAlign = "top") %>%
+  hc_add_theme(hc_theme_google())
+```
+
+Row {data-height=160}
+-------------------------------------
+
+### Crude & Adjusted Effect Estimates {data-width=550}
+
+```{r reg-table-c}
+reg_table$reg_table_mddc
+```
+
+### Key Takeaway {data-width=450}
+
+```{r mddc-takeaway}
+htmltools::div(
+  style = "padding: 8px 12px; font-family: Arial; font-size: 13px; line-height: 1.7;",
+  htmltools::p(
+    htmltools::strong("MDD-C trended positive"),
+    " at endline for UFA+SNA vs UFA only (",
+    round(mean(samples$mddc_sna$mdd_c_cat, na.rm=TRUE)*100, 1), "% vs ",
+    round(mean(samples$mddc_ufa$mdd_c_cat, na.rm=TRUE)*100, 1),
+    "%) but did not reach statistical significance (OR = ",
+    round(regressions$mddc_int$OR, 2), ", p = ",
+    fmt_p(regressions$mddc_int$p.value),
+    "), likely reflecting ",
+    htmltools::strong("limited statistical power"),
+    " (n = ", nrow(samples$mddc_sna),
+    " in the UFA+SNA group) ",
+    htmltools::strong("rather than absence of effect.")
+  ),
+  htmltools::p(
+    "The consistent positive direction across all three outcomes (FCS, MDD-W, and MDD-C)
+    suggests ", htmltools::strong("broader nutritional benefit of integrated assistance"),
+    ". Results should be interpreted with caution given the small UFA+SNA child subsample
+    and use of Firth penalized regression."
+  )
+)
+```
+
+About the Data
+=====================================
+
+Column {.sidebar}
+-------------------------------------
+
+**Data Access**
+
+This dataset is **confidential** and not publicly available. Access is restricted to:
+
+- CARE Malawi MEAL Team
+- USAID/BHA
+- CADECOM & GENET (programme partners)
+- Malawi government counterparts
+
+**Collected via:** KoboToolbox
+
+**Analysed in:** R (flexdashboard, tidyverse, logistf, DT, highcharter)
+
+Row
+-------------------------------------
+
+### Dataset Description
+
+```{r about}
+htmltools::div(
+  style = "padding: 20px; font-family: Arial; font-size: 14px; line-height: 1.9; max-width: 900px;",
+
+  htmltools::h4(style = "color:#C45E0A;", "Data Description"),
+    htmltools::p(
+      "This dashboard uses confidential household survey data collected by CARE Malawi's team via
+      KoboToolbox at baseline (October 2024, post-harvest season) and
+      endline (January 2026, lean season) across the Chiradzulu, Phalombe, and 
+      Thyolo districts of southern Malawi."
+    ),
+    htmltools::p(
+      "The study population comprised DREAMS program beneficiary households receiving
+      at least one intervention component, with the analytic sample restricted to
+      women of reproductive age (WRA, 15\u201349) and households with children aged
+      6\u201323 months."
+    ),
+    htmltools::p(
+      "Data were collected using structured household surveys
+      administered by trained enumerators, capturing household food consumption,
+      dietary diversity, assistance receipt, and demographic characteristics."
+    ),
+  
+    htmltools::p(
+      "Endline data are used for primary analysis, applying adjusted regression models
+      to compare UFA+SNA versus UFA only households in a cross-sectional design;
+     linear regression (\u03b2 coefficient) for FCS and logistic regression (odds ratio)
+      for MDD-W and MDD-C, with Firth penalized logistic regression used for MDD-C
+      due to sparse cells in the small UFA+SNA child subsample."
+    ),
+
+  htmltools::h4(style = "color:#C45E0A;", "Real-World Impact"),
+  htmltools::p("With 149 million children under five affected by stunting and wasting globally,
+  evidence on whether integrated nutrition assistance outperforms food assistance
+  alone is urgently needed to guide humanitarian investment. These findings directly
+  inform USAID/BHA funding decisions and CARE Malawi's program design by demonstrating
+  that the SNA top-up component provides measurable protective benefits for food
+  security and dietary diversity beyond unconditional food assistance alone."),
+
+  htmltools::hr(style = "margin-top:20px; border-color:#ddd;"),
+  htmltools::p(
+    style = "font-size:11px; color:#888;",
+    "DREAMS = Diversifying Resilience Approaches through Market Systems in Emergency . ",
+    "UFA = Unconditional Food Assistance. SNA = Supplementary Nutrition Assistance. ",
+    "FCS thresholds: Poor \u226421, Borderline 22\u201335, Acceptable >35 (WFP 2008). ",
+    "MDD threshold: \u22655 food groups consumed in past 24 hours."
+  )
+)
+```
+
