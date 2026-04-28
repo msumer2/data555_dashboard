@@ -8,7 +8,7 @@
 
 ## Dashboard
 
-**View the dashboard here:** [INSERT GITHUB PAGES URL]
+**View the dashboard here:** https://msumer2.github.io/data555_dashboard/DREAMS_Dashboard.html
 
 ---
 
@@ -62,4 +62,4 @@ source("code/06_reg_table.R")
 
 ## Source Code
 
-[INSERT GITHUB REPO URL]
+https://github.com/msumer2/data555_dashboard
