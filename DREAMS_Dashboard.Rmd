@@ -68,7 +68,7 @@ The analytic sample includes Women of Reproductive Age (WRA, 15-49) and househol
 
 **Note:** *Households that received Unconditional Food Assistance also received Unconditional Cash Transfer.* 
 
-Row {data-height=180}
+Row {data-height=200}
 -------------------------------------
 ### Assistance Coverage
 ```{r table}
@@ -95,11 +95,6 @@ Column {.sidebar}
 -------------------------------------
 
 **Food Consumption Score (FCS)** measures the dietary quality and diversity of a household based on how often they consumed different food groups in the past 7 days.
-
-**Program Arms:**
-
-- **UFA Only** — Unconditional Food Assistance alone
-- **UFA + SNA** — Food Assistance plus Nutrition top-up
 
 **UN World Food Programme (WFP) Thresholds:**
 
